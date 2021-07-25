@@ -20,7 +20,7 @@
 #define REGISTER_BLOCK_SIZE (4*1024)
 //#define TEST_DATA 0x00000100
 #define TEST_DIRECTION 0x00000100
-#define TEST_DATA 0x00000000
+#define TEST_DATA 0x00000100
 #endif
 
 #ifdef RK3399
@@ -110,7 +110,7 @@ static bool mmap_all_register_once() {
     return true;
 }
 
-int main() {
+int main(int argc, char *argv[]) {
     bool result = mmap_all_register_once();
     if(!result)
 	return -1;
@@ -136,7 +136,7 @@ int main() {
     *(s_gpio5_mmap_reg) = TEST_DATA;
     s_gpio5_mmap_reg = s_gpio5_base_reg + (0/sizeof(uint32_t));
     data = *(s_gpio5_mmap_reg);
-    fprintf(stdout, "gpio5 data  after = 0x%lx\n", data);
+    fprintf(stdout, "gpio5 data  after = 0x%lx, TEST_DATA=0x%lx\n", data, TEST_DATA);
 //    *(s_gpio5_mmap_reg) = 0x08001000;
 //    data = *(s_gpio5_mmap_reg);
 //    fprintf(stdout, "gpio5 data  after = 0x%lx\n", data);

@@ -230,10 +230,10 @@ static RaspberryPiModel DetermineRaspberryModel() {
     return PI_MODEL_3;
   }
   unsigned int pi_revision;
-  if (sscanf(index(revision_key, ':') + 1, "%x", &pi_revision) != 1) {
+  /*if (sscanf(index(revision_key, ':') + 1, "%x", &pi_revision) != 1) {
     fprintf(stderr, "Unknown Revision: Could not determine Pi model\n");
     return PI_MODEL_3;
-  }
+  }*/
 
   // https://www.raspberrypi.org/documentation/hardware/raspberrypi/revision-codes/README.md
   const unsigned pi_type = (pi_revision >> 4) & 0xff;

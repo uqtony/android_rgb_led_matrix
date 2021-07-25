@@ -5,6 +5,9 @@ include $(CLEAR_VARS)
 ifeq (1,$(strip $(shell expr $(PLATFORM_VERSION) \>= 5.0)))
 LOCAL_CFLAGS += -DMMAP64
 endif
+LOCAL_CLANG := true
+LOCAL_CPP_EXTENSION := .cc
+
 
 LOCAL_C_INCLUDES := \
     $(LOCAL_PATH)/include\
@@ -23,7 +26,8 @@ LOCAL_SRC_FILES:=\
     lib/multiplex-mappers.cc \
     lib/options-initialize.cc \
     lib/pixel-mapper.cc \
-    lib/thread.cc
+    lib/thread.cc \
+    examples-api-use/demo-main.cc
 
 LOCAL_MODULE_TAGS := optional
 LOCAL_CFLAGS +=-W -Wall -Wextra -Wno-unused-parameter -O3 -g -fPIC
@@ -31,27 +35,6 @@ LOCAL_CFLAGS +=-W -Wall -Wextra -Wno-unused-parameter -O3 -g -fPIC
 
 LOCAL_MODULE_PATH := $(TARGET_OUT_OPTIONAL_EXECUTABLES)
 
-LOCAL_MODULE:=librgbledmatrix
-
-include $(BUILD_STATIC_LIBRARY)
-                             
-include $(CLEAR_VARS)
-
-ifeq (1,$(strip $(shell expr $(PLATFORM_VERSION) \>= 5.0)))
-LOCAL_CFLAGS += -DMMAP64
-endif
-
-
-LOCAL_SRC_FILES:=\
-	gpio.cpp
-
-LOCAL_MODULE_TAGS := debug
-
-LOCAL_MODULE_PATH := $(TARGET_OUT_OPTIONAL_EXECUTABLES)
-
 LOCAL_MODULE:=rgb_led_matrix
-
-LOCAL_STATIC_LIBRARIES :=\
-	librgbledmatrix
 
 include $(BUILD_EXECUTABLE)

@@ -72,10 +72,10 @@ void Thread::Start(int priority, uint32_t affinity_mask) {
         CPU_SET(i, &cpu_mask);
       }
     }
-    if ((err=pthread_setaffinity_np(thread_, sizeof(cpu_mask), &cpu_mask))) {
+    /*if ((err=pthread_setaffinity_np(thread_, sizeof(cpu_mask), &cpu_mask))) {
       // On a Pi1, this won't work as there is only one core. Don't worry in
       // that case.
-    }
+    }*/
   }
 
   started_ = true;
