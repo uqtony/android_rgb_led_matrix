@@ -16,7 +16,8 @@
 #define GPIO5_CLOCK_CON_OFFSET 0x0198
 #define REGISTER_BLOCK_SIZE (4*1024)
 //#define TEST_DATA 0x00000100
-#define TEST_DATA 0x00000100
+#define TEST_DIRECTION 0x00000100
+#define TEST_DATA 0x00000000
 #endif
 
 #ifdef RK3399
@@ -24,6 +25,7 @@
 #define CLOCK_CON_BASE_ADDRESS 0xFF760000
 #define GPIO5_CLOCK_CON_OFFSET 0x037C
 #define REGISTER_BLOCK_SIZE (4*1024)
+#define TEST_DIRECTION 0x00000100
 #define TEST_DATA 0x08001004
 #endif
 
@@ -123,7 +125,7 @@ int main() {
     clock_data = *(s_gpio5_clock_con_reg);
     fprintf(stdout, "gpio5 clock_con data after = 0x%lx\n", clock_data);
 
-    *(s_gpio5_mmap_direct_reg) |= TEST_DATA;
+    *(s_gpio5_mmap_direct_reg) |= TEST_DIRECTION;
 
     uint32_t data = *(s_gpio5_mmap_reg);
     fprintf(stdout, "gpio5 data  before = 0x%lx\n", data);
