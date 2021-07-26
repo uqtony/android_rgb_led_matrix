@@ -27,7 +27,7 @@ LOCAL_SRC_FILES:=\
     lib/options-initialize.cc \
     lib/pixel-mapper.cc \
     lib/thread.cc \
-    examples-api-use/demo-main.cc
+    gpio_rk3288.cc
 
 LOCAL_MODULE_TAGS := optional
 LOCAL_CFLAGS +=-W -Wall -Wextra -Wno-unused-parameter -O3 -g -fPIC
