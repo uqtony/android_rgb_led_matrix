@@ -79,31 +79,6 @@ public:
   inline gpio_bits_t Read() const { return ReadRegisters() & input_bits_; }
 
 private:
-  inline gpio_bits_t ReadRegisters() const {
-    return (static_cast<gpio_bits_t>(*gpio_read_bits_low_)
-#ifdef ENABLE_WIDE_GPIO_COMPUTE_MODULE
-            | (static_cast<gpio_bits_t>(*gpio_read_bits_low_) << 32)
-#endif
-            );
-  }
-
-  inline void WriteSetBits(gpio_bits_t value) {
-    *gpio_set_bits_low_ = static_cast<uint32_t>(value & 0xFFFFFFFF);
-#ifdef ENABLE_WIDE_GPIO_COMPUTE_MODULE
-    if (uses_64_bit_)
-      *gpio_set_bits_high_ = static_cast<uint32_t>(value >> 32);
-#endif
-  }
-
-  inline void WriteClrBits(gpio_bits_t value) {
-    *gpio_clr_bits_low_ = static_cast<uint32_t>(value & 0xFFFFFFFF);
-#ifdef ENABLE_WIDE_GPIO_COMPUTE_MODULE
-    if (uses_64_bit_)
-      *gpio_clr_bits_high_ = static_cast<uint32_t>(value >> 32);
-#endif
-  }
-
-private:
   gpio_bits_t output_bits_;
   gpio_bits_t input_bits_;
   gpio_bits_t reserved_bits_;

@@ -18,7 +18,8 @@ LOCAL_SRC_FILES:=\
     lib/bdf-font.cc \
     lib/content-streamer.cc \
     lib/framebuffer.cc \
-    lib/gpio.cc \
+#    lib/gpio.cc \
+    lib/gpio_rk3288.cc \
     lib/graphics.cc \
     lib/hardware-mapping.c \
     lib/led-matrix.cc \
