@@ -21,6 +21,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include "exec_program.h"
 
 using std::min;
 using std::max;
@@ -30,7 +31,7 @@ using std::max;
 
 using namespace rgb_matrix;
 
-volatile bool interrupt_received = false;
+static volatile bool interrupt_received = false;
 static void InterruptHandler(int signo) {
   interrupt_received = true;
 }
@@ -1055,7 +1056,7 @@ static int usage(const char *progname) {
   return 1;
 }
 
-int main(int argc, char *argv[]) {
+int demo_main(int argc, char *argv[]) {
   int demo = -1;
   int scroll_ms = 30;
 

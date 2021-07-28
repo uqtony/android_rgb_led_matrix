@@ -1,10 +1,14 @@
+#include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+
+#include "exec_program.h"
 
 #ifndef GPIO_BIT(b)
 #define GPIO_BIT(b) ((uint32_t)1<<(b))
@@ -159,6 +163,7 @@ static struct RockchipGPIO s_rk3288_gpios[] = {
 };
 
 struct RPIMappingRockchip_GPIO {
+    const char *name;
     uint32_t rpi_mask;
     uint32_t rockchip_mask;
     struct RockchipGPIO* rockchipGpio;
@@ -180,18 +185,21 @@ static struct RPIMappingRockchip s_rpiRegularMappingRK3288 = {
 
     .output_enable = 
     {
+        .name = "output_enable",
         .rpi_mask = GPIO_BIT(18),
         .rockchip_mask = GPIO_BIT(4),
         .rockchipGpio = &s_rk3288_gpios[8],
     },
     .clock = 
     {   
+        .name = "clock",
         .rpi_mask = GPIO_BIT(17),
         .rockchip_mask = GPIO_BIT(6),
         .rockchipGpio = &s_rk3288_gpios[8],
     },
     .strobe =            
     {
+        .name = "strobe",
         .rpi_mask = GPIO_BIT(4),
         .rockchip_mask = GPIO_BIT(5),
         .rockchipGpio = &s_rk3288_gpios[8],
@@ -199,30 +207,35 @@ static struct RPIMappingRockchip s_rpiRegularMappingRK3288 = {
 
     .a =            
     {
+        .name = "a",
         .rpi_mask = GPIO_BIT(22),
         .rockchip_mask = GPIO_BIT(8),
         .rockchipGpio = &s_rk3288_gpios[5],
     },
     .b =            
     {
+        .name = "b",
         .rpi_mask = GPIO_BIT(23),
         .rockchip_mask = GPIO_BIT(9),
         .rockchipGpio = &s_rk3288_gpios[5],
     },
     .c =            // TBD
     {
+        .name = "c",
         .rpi_mask = GPIO_BIT(24),
         .rockchip_mask = GPIO_BIT(7),
         .rockchipGpio = &s_rk3288_gpios[8],
     },
     .d =            // Not determine
     {
+        .name = "d",
         .rpi_mask = GPIO_BIT(25),
         .rockchip_mask = GPIO_BIT(8),
         .rockchipGpio = &s_rk3288_gpios[8],
     },
     .e =            // Not determine
     {
+        .name = "e",
         .rpi_mask = GPIO_BIT(15),
         .rockchip_mask = GPIO_BIT(9),
         .rockchipGpio = &s_rk3288_gpios[8],
@@ -230,36 +243,42 @@ static struct RPIMappingRockchip s_rpiRegularMappingRK3288 = {
 
     .p0_r1 =           
     {
+        .name = "p0_r1",
         .rpi_mask = GPIO_BIT(11),
         .rockchip_mask = GPIO_BIT(6),
         .rockchipGpio = &s_rk3288_gpios[7],
     },
     .p0_g1 =           
     {
+        .name = "p0_g1",
         .rpi_mask = GPIO_BIT(27),
         .rockchip_mask = GPIO_BIT(5),
         .rockchipGpio = &s_rk3288_gpios[7],
     },
     .p0_b1 =            
     {
+        .name = "p0_b1",
         .rpi_mask = GPIO_BIT(7),
         .rockchip_mask = GPIO_BIT(18),
         .rockchipGpio = &s_rk3288_gpios[7],
     },
     .p0_r2 =           
     {
+        .name = "p0_r2",
         .rpi_mask = GPIO_BIT(8),
         .rockchip_mask = GPIO_BIT(17),
         .rockchipGpio = &s_rk3288_gpios[7],
     },
     .p0_g2 =            
     {
+        .name = "p0_g2",
         .rpi_mask = GPIO_BIT(9),
         .rockchip_mask = GPIO_BIT(10),
         .rockchipGpio = &s_rk3288_gpios[7],
     },
     .p0_b2 =            
     {
+        .name = "p0_b2",
         .rpi_mask = GPIO_BIT(10),
         .rockchip_mask = GPIO_BIT(0),
         .rockchipGpio = &s_rk3288_gpios[7],
@@ -595,15 +614,10 @@ void test() {
     } */
 }
 
-int main(int argc, char *argv[]) {
-    bool result = init_rpi_mapping_rk3288_once();
-    if(!result){
-        fprintf(stderr, "init rpi mapping rk3288 once failed!!\n");
-	return -1;
-    }
+void test2() {
     uint32_t clock_data = *(s_gpio_clock_control_read_reg);
     fprintf(stdout, "clock data= 0x%lx\n", clock_data);
-    
+
     uint32_t inputs = 0;
     inputs |= s_rpiMappingRockchip->p0_r1.rpi_mask| // 222 
               s_rpiMappingRockchip->output_enable.rpi_mask|//252
@@ -617,21 +631,229 @@ int main(int argc, char *argv[]) {
               s_rpiMappingRockchip->a.rpi_mask |//160  
               s_rpiMappingRockchip->b.rpi_mask//161   
               ;
-    
-    uint32_t data = readGPIOs(inputs); 
+
+    uint32_t data = readGPIOs(inputs);
     fprintf(stdout, " data  before set= 0x%lx\n", data);
     //fprintf(stdout, "clear data\n");
     //setGPIOs(0xffffffff, CLEAR_DATA);   
 
     setGPIOsMode(inputs);
-    setGPIOs(inputs, false);   
+    setGPIOs(inputs, false);
     //test();
 
-    data = readGPIOs(inputs); 
+    data = readGPIOs(inputs);
     fprintf(stdout, " data  after set= 0x%lx, input=0x%lx\n", data, inputs);
     //setGPIOs(inputs, true);   
     //data = readGPIOs(inputs); 
     //fprintf(stdout, " data  after clear= 0x%lx, input=0x%lx\n", data, inputs);
+#ifdef RK3288_LED
+    fprintf(stdout, "RK3288_LED is defined\n");
+#endif
+
+}
+
+typedef int (*program_main)(int argc, char* argv[]);
+
+struct ProgramMain {
+    const char* name;
+    program_main main_function;
+};
+
+struct ProgramMain s_programMain[] = {
+    {
+        .name = "c_example",
+        .main_function = &c_example_main
+    },
+    {
+        .name = "scrolling_text_example",
+        .main_function = &scrolling_text_example_main
+    },
+    {
+        .name = "input_example",
+        .main_function = &input_example_main
+    },
+    {
+        .name = "clock",
+        .main_function = &clock_main
+    },
+    {
+        .name = "pixel_mover",
+        .main_function = &pixel_mover_main
+    },
+    {
+        .name = "text_example",
+        .main_function = &text_example_main
+    },
+    {
+        .name = "minimal_example",
+        .main_function = &minimal_example_main
+    },
+
+    {
+        .name = "demo",
+        .main_function = &demo_main
+    }
+
+};
+
+static struct RPIMappingRockchip_GPIO* select_gpio_by_name(char *arg)
+{
+    if (strcmp(arg, s_rpiMappingRockchip->output_enable.name) == 0){
+        return &(s_rpiMappingRockchip->output_enable);
+    }
+    if (strcmp(arg, s_rpiMappingRockchip->clock.name) == 0){
+        return &(s_rpiMappingRockchip->clock);
+    }
+
+    if (strcmp(arg, s_rpiMappingRockchip->strobe.name) == 0){
+        return &(s_rpiMappingRockchip->strobe);
+    }
+
+    if (strcmp(arg, s_rpiMappingRockchip->a.name) == 0){
+        return &(s_rpiMappingRockchip->a);
+    }
+
+    if (strcmp(arg, s_rpiMappingRockchip->b.name) == 0){
+        return &(s_rpiMappingRockchip->b);
+    }
+
+    if (strcmp(arg, s_rpiMappingRockchip->c.name) == 0){
+        return &(s_rpiMappingRockchip->c);
+    }
+
+    if (strcmp(arg, s_rpiMappingRockchip->d.name) == 0){
+        return &(s_rpiMappingRockchip->d);
+    }
+
+    if (strcmp(arg, s_rpiMappingRockchip->e.name) == 0){
+        return &(s_rpiMappingRockchip->e);
+    }
+
+    if (strcmp(arg, s_rpiMappingRockchip->p0_r1.name) == 0){
+        return &(s_rpiMappingRockchip->p0_r1);
+    }
+
+    if (strcmp(arg, s_rpiMappingRockchip->p0_g1.name) == 0){
+        return &(s_rpiMappingRockchip->p0_g1);
+    }
+
+    if (strcmp(arg, s_rpiMappingRockchip->p0_b1.name) == 0){
+        return &(s_rpiMappingRockchip->p0_b1);
+    }
+
+    if (strcmp(arg, s_rpiMappingRockchip->p0_r2.name) == 0){
+        return &(s_rpiMappingRockchip->p0_r2);
+    }
+
+    if (strcmp(arg, s_rpiMappingRockchip->p0_g2.name) == 0){
+        return &(s_rpiMappingRockchip->p0_g2);
+    }
+
+    if (strcmp(arg, s_rpiMappingRockchip->p0_b2.name) == 0){
+        return &(s_rpiMappingRockchip->p0_b2);
+    }
+
+    return NULL;
+} 
+
+static int read_gpio(char *arg)
+{
+    fprintf(stdout, "read gpio, optind=%d, arg=%s\n", optind, arg);
+    struct RPIMappingRockchip_GPIO* gpio = select_gpio_by_name(arg);
+    if (gpio == NULL) {
+        fprintf(stderr, "Cannot find gpio by name[%s]\n", arg);
+        return -1;
+    }
+    uint32_t data =readGPIOs(gpio->rpi_mask);
+     
+    fprintf(stdout, "Read gpio: name[%s], data=0x%lx, status:%s\n", arg, data, (data!=0)?"High":"Low");
+    return 0;
+}
+
+static int write_gpio(char *arg)
+{
+    fprintf(stdout, "write gpio, optind=%d, arg=%s\n", optind, arg);
+    struct RPIMappingRockchip_GPIO* gpio = select_gpio_by_name(arg);
+    if (gpio == NULL) {
+        fprintf(stderr, "Cannot find gpio by name[%s]\n", arg);
+        return -1;
+    }
+    fprintf(stdout, "write gpio, name[%s]\n", arg);
+    setGPIOs(gpio->rpi_mask);
+    uint32_t data =readGPIOs(gpio->rpi_mask);
+
+    fprintf(stdout, "Read gpio: name[%s], data=0x%lx, status:%s\n", arg, data, (data!=0)?"High":"Low");
+
+    return 0;
+}
+
+static int exec_program(int argc, char *argv[])
+{ 
+    fprintf(stdout, "execute program, argc=%d, optind=%d\n", argc, optind);
+    char* arg = argv[optind];
+    fprintf(stdout, "execute demo, program=%s\n", argv[optind]);
+    int programSize = sizeof(s_programMain)/ sizeof(s_programMain[0]);
+    fprintf(stdout, "size of executable program=%d\n", programSize);
+    for (int i = 0; i < programSize; i++)
+    {
+        if (strcmp(argv[optind], s_programMain[i].name) == 0) {
+            return s_programMain[i].main_function(argc-optind+1, argv+optind-1);
+        }
+    }
+
+    return 0;
+}
+
+
+static int usage(int argc, char* argv[])
+{
+    fprintf(stdout, "Usage: %s -R[parameter] -W[parameter] -p [program_name]\n", argv[0]);
+    fprintf(stdout, "\t-R: read gpio by name\n");
+    fprintf(stdout, "\t-W: write gpio by name\n");
+    
+    fprintf(stdout, "\t-p: execute program by name\n");
+    int programSize = sizeof(s_programMain)/ sizeof(s_programMain[0]);
+    for (int i = 0; i < programSize; i++)
+    {
+        fprintf(stdout, "\t\t[%d]%s\n", i, s_programMain[i].name);
+    }
+    return 0;
+}
+
+
+static int parseOpt(int argc, char *argv[])
+{
+    int opt;
+
+    while((opt = getopt(argc, argv, "R:W:p")) != -1) {
+        switch(opt) {
+            case 'R':
+                read_gpio(optarg);
+		break;
+	    case 'W':
+                write_gpio(optarg);
+                break;
+            case 'p':
+                return exec_program(argc, argv);
+                break;
+            default:
+                return usage(argc, argv);
+        }
+    }
+    return 0;
+}
+
+int main(int argc, char *argv[]) {
+   
+    bool result = init_rpi_mapping_rk3288_once();
+    if(!result){
+        fprintf(stderr, "init rpi mapping rk3288 once failed!!\n");
+	return -1;
+    }
+    if (argc <=1) {
+        return usage(argc, argv);
+    }
+    parseOpt(argc, argv);
 
     return 0;
 }

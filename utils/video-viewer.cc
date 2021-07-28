@@ -54,7 +54,7 @@ using rgb_matrix::RGBMatrix;
 using rgb_matrix::StreamWriter;
 using rgb_matrix::StreamIO;
 
-volatile bool interrupt_received = false;
+static volatile bool interrupt_received = false;
 static void InterruptHandler(int) {
   interrupt_received = true;
 }
@@ -154,7 +154,7 @@ SwsContext *CreateSWSContext(const AVCodecContext *codec_ctx,
   return swsCtx;
 }
 
-int main(int argc, char *argv[]) {
+int video_viewer_main(int argc, char *argv[]) {
   RGBMatrix::Options matrix_options;
   rgb_matrix::RuntimeOptions runtime_opt;
   if (!rgb_matrix::ParseOptionsFromFlags(&argc, &argv,

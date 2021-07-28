@@ -29,7 +29,7 @@
 
 using namespace rgb_matrix;
 
-volatile bool interrupt_received = false;
+static volatile bool interrupt_received = false;
 static void InterruptHandler(int signo) {
   interrupt_received = true;
 }

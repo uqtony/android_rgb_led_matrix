@@ -105,7 +105,7 @@
 
 static volatile uint32_t *s_Timer1Mhz = NULL;
 
-#ifndef GPIO_BIT(b)
+#ifndef GPIO_BIT
 #define GPIO_BIT(b) (1ull<<(b))
 #endif
 
@@ -121,9 +121,9 @@ static volatile uint32_t *s_Timer1Mhz = NULL;
 #endif
 
 struct RockchipGPIO {
-    char *name;
+    char const *name;
     uint32_t base_address;
-    uint32_t* base_read_reg, *base_write_reg;
+    volatile uint32_t* base_read_reg, *base_write_reg;
     volatile uint32_t* data_read_reg, *data_write_reg;
     volatile uint32_t* direction_read_reg, *direction_write_reg;;
 };
@@ -367,8 +367,8 @@ static struct RPIMappingRockchip s_rpiRegularMappingRK3288 = {
 
 static struct RPIMappingRockchip* s_rpiMappingRockchip = NULL;
 
-static uint32_t* s_clock_base_read_reg = NULL;
-static uint32_t* s_clock_base_write_reg = NULL;
+static volatile uint32_t* s_clock_base_read_reg = NULL;
+static volatile uint32_t* s_clock_base_write_reg = NULL;
 
 static volatile uint32_t* s_gpio_clock_control_read_reg = NULL; 
 static volatile uint32_t* s_gpio_clock_control_write_reg = NULL; 
@@ -403,7 +403,7 @@ static uint32_t *mmap_register(off_t base, bool memread = true) {
     fprintf(stderr, "MMapping failed\n");
     perror("mmap error: ");
     fprintf(stderr, "MMapping from base 0x%lx, real_addr 0x%lx, length 0x%lx\n",
-            base, real_addr, length);
+            base, (unsigned long)real_addr, (unsigned long)length);
     return NULL;
   }
   return result;
@@ -487,6 +487,7 @@ static bool setGPIOsMode(uint32_t inputs, bool outputMode = true)
 
     if(!enableGPIOClock())
         return false;
+    fprintf(stdout, " setGPIOsMode, inputs= 0x%lx\n", inputs);
 
     // Only care about GPIO mapping to rockchip
     if ( (s_rpiMappingRockchip->output_enable.rpi_mask & inputs) > 0)
@@ -553,6 +554,8 @@ static uint32_t readGPIO(struct RPIMappingRockchip_GPIO* gpio)
     return data & gpio->rockchip_mask;
 }
 
+static uint32_t readGPIOs(uint32_t inputs);
+
 static bool setGPIOs(uint32_t inputs, bool clear_bit = false)
 {
     if (s_rpiMappingRockchip == NULL)
@@ -561,6 +564,7 @@ static bool setGPIOs(uint32_t inputs, bool clear_bit = false)
     if(!enableGPIOClock())
         return false;
 
+    fprintf(stdout, " setGPIOs, inputs= 0x%lx, clear data=%d\n", inputs, clear_bit);
     // Only care about GPIO mapping to rockchip
     if ( (s_rpiMappingRockchip->output_enable.rpi_mask & inputs) > 0)
         setGPIO(&(s_rpiMappingRockchip->output_enable), clear_bit);
@@ -604,6 +608,9 @@ static bool setGPIOs(uint32_t inputs, bool clear_bit = false)
 
     if ( (s_rpiMappingRockchip->p0_b2.rpi_mask & inputs) > 0)
         setGPIO(&(s_rpiMappingRockchip->p0_b2), clear_bit);
+    
+    fprintf(stdout, " data  after set= 0x%lx\n", readGPIOs(inputs));
+
     return true;
 }
 
@@ -679,6 +686,15 @@ static uint32_t readGPIOs(uint32_t inputs)
 
 namespace rgb_matrix {
 
+GPIO::GPIO() : output_bits_(0), input_bits_(0), reserved_bits_(0),
+               slowdown_(1)
+#ifdef ENABLE_WIDE_GPIO_COMPUTE_MODULE
+             , uses_64_bit_(false)
+#endif
+{
+}
+
+
 gpio_bits_t GPIO::InitOutputs(gpio_bits_t outputs,
                               bool adafruit_pwm_transition_hack_needed) {
   if (s_rpiMappingRockchip == NULL) {
@@ -711,7 +727,7 @@ gpio_bits_t GPIO::RequestInputs(gpio_bits_t inputs) {
 #else
   const int kMaxAvailableBit = 31;
 #endif
-  setGPIOsMode(inputs, false) // set inputs Mode: input;
+  setGPIOsMode(inputs, false); // set inputs Mode: input;
   input_bits_ |= inputs;
   return inputs;
 }// end GPIO::RequestInputs
@@ -746,7 +762,7 @@ static RaspberryPiModel DetermineRaspberryModel() {
     fprintf(stderr, "non-existent Revision: Could not determine Pi model\n");
     return PI_MODEL_3;
   }
-  unsigned int pi_revision;
+  unsigned int pi_revision = 0;
   /*if (sscanf(index(revision_key, ':') + 1, "%x", &pi_revision) != 1) {
     fprintf(stderr, "Unknown Revision: Could not determine Pi model\n");
     return PI_MODEL_3;
@@ -800,7 +816,7 @@ bool GPIO::Init(int slowdown) {
 
 #define CLEAR_DATA true
 
-inline gpio_bits_t GPIO::ReadRegisters() const {
+gpio_bits_t GPIO::ReadRegisters() const {
     uint32_t data = readGPIOs(0xffffffff);
     return (static_cast<gpio_bits_t>(data)
 #ifdef ENABLE_WIDE_GPIO_COMPUTE_MODULE
@@ -809,7 +825,7 @@ inline gpio_bits_t GPIO::ReadRegisters() const {
             );
   }// end GPIO::ReadRegisters
 
-inline void GPIO::WriteSetBits(gpio_bits_t value) {
+void GPIO::WriteSetBits(gpio_bits_t value) {
     setGPIOs(static_cast<uint32_t>(value & 0xFFFFFFFF), !CLEAR_DATA);
 #ifdef ENABLE_WIDE_GPIO_COMPUTE_MODULE
     if (uses_64_bit_)
@@ -817,7 +833,7 @@ inline void GPIO::WriteSetBits(gpio_bits_t value) {
 #endif
   }// end GPIO::WriteSetBits
 
-inline void GPIO::WriteClrBits(gpio_bits_t value) {
+void GPIO::WriteClrBits(gpio_bits_t value) {
     setGPIOs(static_cast<uint32_t>(value & 0xFFFFFFFF), CLEAR_DATA);
 #ifdef ENABLE_WIDE_GPIO_COMPUTE_MODULE
     if (uses_64_bit_)

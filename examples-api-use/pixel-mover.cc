@@ -18,9 +18,11 @@
 
 #include <deque>
 
+#include "exec_program.h"
+
 using namespace rgb_matrix;
 
-volatile bool interrupt_received = false;
+static volatile bool interrupt_received = false;
 static void InterruptHandler(int signo) {
   interrupt_received = true;
 }
@@ -95,7 +97,7 @@ static Color interpolate(const Color &c1, const Color &c2, float fraction) {
            quantize(c1.b * fraction + c2.b * c2_fraction)};
 }
 
-int main(int argc, char *argv[]) {
+int pixel_mover_main(int argc, char *argv[]) {
   RGBMatrix::Options matrix_options;
   rgb_matrix::RuntimeOptions runtime_opt;
   if (!rgb_matrix::ParseOptionsFromFlags(&argc, &argv,

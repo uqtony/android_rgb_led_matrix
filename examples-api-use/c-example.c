@@ -9,7 +9,9 @@
 #include <string.h>
 #include <unistd.h>
 
-int main(int argc, char **argv) {
+#include "exec_program.h"
+
+int c_example_main(int argc, char **argv) {
   struct RGBLedMatrixOptions options;
   struct RGBLedMatrix *matrix;
   struct LedCanvas *offscreen_canvas;

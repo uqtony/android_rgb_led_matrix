@@ -13,6 +13,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "exec_program.h"
+
 using namespace rgb_matrix;
 
 static int usage(const char *progname) {
@@ -45,7 +47,7 @@ static bool FullSaturation(const Color &c) {
     && (c.b == 0 || c.b == 255);
 }
 
-int main(int argc, char *argv[]) {
+int text_example_main(int argc, char *argv[]) {
   RGBMatrix::Options matrix_options;
   rgb_matrix::RuntimeOptions runtime_opt;
   if (!rgb_matrix::ParseOptionsFromFlags(&argc, &argv,

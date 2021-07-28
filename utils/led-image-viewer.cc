@@ -66,7 +66,7 @@ struct FileInfo {
   rgb_matrix::StreamIO *content_stream;
 };
 
-volatile bool interrupt_received = false;
+static volatile bool interrupt_received = false;
 static void InterruptHandler(int signo) {
   interrupt_received = true;
 }
@@ -246,7 +246,7 @@ static int usage(const char *progname) {
   return 1;
 }
 
-int main(int argc, char *argv[]) {
+int led_image_viewer_main(int argc, char *argv[]) {
   Magick::InitializeMagick(*argv);
 
   RGBMatrix::Options matrix_options;

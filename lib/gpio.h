@@ -79,6 +79,13 @@ public:
   inline gpio_bits_t Read() const { return ReadRegisters() & input_bits_; }
 
 private:
+  gpio_bits_t ReadRegisters() const;
+  void WriteSetBits(gpio_bits_t value);
+
+  void WriteClrBits(gpio_bits_t value);
+
+private:
+
   gpio_bits_t output_bits_;
   gpio_bits_t input_bits_;
   gpio_bits_t reserved_bits_;

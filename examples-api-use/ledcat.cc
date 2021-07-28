@@ -18,12 +18,12 @@
 using rgb_matrix::RGBMatrix;
 using rgb_matrix::Canvas;
 
-volatile bool interrupt_received = false;
+static volatile bool interrupt_received = false;
 static void InterruptHandler(int signo) {
   interrupt_received = true;
 }
 
-int main(int argc, char *argv[]) {
+int ledcat_main(int argc, char *argv[]) {
   RGBMatrix::Options defaults;
   defaults.hardware_mapping = "regular"; // or e.g. "adafruit-hat"
   defaults.rows = 32;
