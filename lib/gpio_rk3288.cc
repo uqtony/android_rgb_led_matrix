@@ -125,7 +125,10 @@ struct RockchipGPIO {
     uint32_t base_address;
     volatile uint32_t* base_read_reg, *base_write_reg;
     volatile uint32_t* data_read_reg, *data_write_reg;
-    volatile uint32_t* direction_read_reg, *direction_write_reg;;
+    volatile uint32_t* direction_read_reg, *direction_write_reg;
+    volatile bool change;
+    volatile bool clear;
+    volatile uint32_t buffer;
 };
 
 static struct RockchipGPIO s_rk3288_gpios[] = {
@@ -142,6 +145,10 @@ static struct RockchipGPIO s_rk3288_gpios[] = {
 
         .direction_read_reg = NULL,
         .direction_write_reg = NULL,
+   
+        .change = false,
+        .clear = false,
+        .buffer = 0,
     },
     {
         .name = "gpio1",
@@ -156,6 +163,10 @@ static struct RockchipGPIO s_rk3288_gpios[] = {
 
         .direction_read_reg = NULL,
         .direction_write_reg = NULL,
+
+        .change = false,
+        .clear = false,
+        .buffer = 0,
     },
     {
         .name = "gpio2",
@@ -170,6 +181,10 @@ static struct RockchipGPIO s_rk3288_gpios[] = {
 
         .direction_read_reg = NULL,
         .direction_write_reg = NULL,
+
+        .change = false,
+        .clear = false,
+        .buffer = 0,
     },
     {
         .name = "gpio3",
@@ -184,6 +199,10 @@ static struct RockchipGPIO s_rk3288_gpios[] = {
 
         .direction_read_reg = NULL,
         .direction_write_reg = NULL,
+
+        .change = false,
+        .clear = false,
+        .buffer = 0,
     },
     {
         .name = "gpio4",
@@ -198,6 +217,11 @@ static struct RockchipGPIO s_rk3288_gpios[] = {
 
         .direction_read_reg = NULL,
         .direction_write_reg = NULL,
+
+        .change = false,
+        .clear = false,
+        .buffer = 0,
+
     },
     {
         .name = "gpio5",
@@ -212,6 +236,11 @@ static struct RockchipGPIO s_rk3288_gpios[] = {
 
         .direction_read_reg = NULL,
         .direction_write_reg = NULL,
+
+        .change = false,
+        .clear = false,
+        .buffer = 0,
+
     },
     {
         .name = "gpio6",
@@ -226,6 +255,11 @@ static struct RockchipGPIO s_rk3288_gpios[] = {
 
         .direction_read_reg = NULL,
         .direction_write_reg = NULL,
+
+        .change = false,
+        .clear = false,
+        .buffer = 0,
+
     },
     {
         .name = "gpio7",
@@ -240,6 +274,11 @@ static struct RockchipGPIO s_rk3288_gpios[] = {
 
         .direction_read_reg = NULL,
         .direction_write_reg = NULL,
+
+        .change = false,
+        .clear = false,
+        .buffer = 0,
+
     },
     {
         .name = "gpio8",
@@ -254,6 +293,11 @@ static struct RockchipGPIO s_rk3288_gpios[] = {
 
         .direction_read_reg = NULL,
         .direction_write_reg = NULL,
+
+        .change = false,
+        .clear = false,
+        .buffer = 0,
+
     }
 };
 
@@ -354,7 +398,7 @@ static struct RPIMappingRockchip s_rpiRegularMappingRK3288 = {
     .p0_g2 =            
     {
         .rpi_mask = GPIO_BIT(9),
-        .rockchip_mask = GPIO_BIT(10),
+        .rockchip_mask = GPIO_BIT(2),
         .rockchipGpio = &s_rk3288_gpios[7],
     },
     .p0_b2 =            
@@ -487,7 +531,7 @@ static bool setGPIOsMode(uint32_t inputs, bool outputMode = true)
 
     if(!enableGPIOClock())
         return false;
-    fprintf(stdout, " setGPIOsMode, inputs= 0x%lx\n", inputs);
+    //fprintf(stdout, " setGPIOsMode, inputs= 0x%lx\n", inputs);
 
     // Only care about GPIO mapping to rockchip
     if ( (s_rpiMappingRockchip->output_enable.rpi_mask & inputs) > 0)
@@ -535,14 +579,48 @@ static bool setGPIOsMode(uint32_t inputs, bool outputMode = true)
     return true;
 }
 
+static void flashGPIOs()
+{
+    for(int i = 5; i <=8; i++) {
+        if (s_rk3288_gpios[i].change){
+            !s_rk3288_gpios[i].clear?
+             *(s_rk3288_gpios[i].data_write_reg) |= s_rk3288_gpios[i].buffer:
+             *(s_rk3288_gpios[i].data_write_reg) &= (s_rk3288_gpios[i].buffer);
+             s_rk3288_gpios[i].change = false;
+             s_rk3288_gpios[i].clear = false;
+           
+        }
+    }
+}
+
 static bool setGPIO(struct RPIMappingRockchip_GPIO* gpio, bool clear_bit = false)
 {
     if (gpio == NULL || gpio-> rockchipGpio == NULL)
         return false;
     uint32_t data = gpio->rockchip_mask;
+/*    if (!gpio->rockchipGpio->change) 
+        gpio->rockchipGpio->buffer = *(gpio->rockchipGpio->data_read_reg);
+  */ 
     !clear_bit?
+    gpio-> rockchipGpio->buffer |= data:
+    gpio-> rockchipGpio->buffer &= ~data;
+    
+    gpio->rockchipGpio->change = true;
+    gpio->rockchipGpio->clear = clear_bit;
+
+/*    !clear_bit?
     *(gpio-> rockchipGpio->data_write_reg) |= data:
     *(gpio-> rockchipGpio->data_write_reg) &= ~data;
+*/
+
+    /*uint32_t result = 0;
+    result = *(gpio-> rockchipGpio->data_read_reg);
+    bool cmp_result = !clear_bit? result & data: ~result & data;
+    if (!cmp_result) {
+        fprintf(stderr, "setGPIO failed, data=0x%lx, result=0x%lx, clear_bit=%s\n", 
+                data, result,clear_bit?"true":"false");
+    }*/
+
     return true;
 }
 
@@ -556,15 +634,23 @@ static uint32_t readGPIO(struct RPIMappingRockchip_GPIO* gpio)
 
 static uint32_t readGPIOs(uint32_t inputs);
 
+static uint32_t last_gpios_status = 0xffffffff;
+static bool last_clear_bit = false;
+
 static bool setGPIOs(uint32_t inputs, bool clear_bit = false)
 {
+    if(last_gpios_status == inputs && last_clear_bit == clear_bit)
+        return true;
+    last_gpios_status = inputs;
+    last_clear_bit = clear_bit;
+
     if (s_rpiMappingRockchip == NULL)
         return false;
 
     if(!enableGPIOClock())
         return false;
 
-    fprintf(stdout, " setGPIOs, inputs= 0x%lx, clear data=%d\n", inputs, clear_bit);
+    //fprintf(stdout, " setGPIOs, inputs= 0x%lx, clear data=%d\n", inputs, clear_bit);
     // Only care about GPIO mapping to rockchip
     if ( (s_rpiMappingRockchip->output_enable.rpi_mask & inputs) > 0)
         setGPIO(&(s_rpiMappingRockchip->output_enable), clear_bit);
@@ -591,8 +677,9 @@ static bool setGPIOs(uint32_t inputs, bool clear_bit = false)
     if ( (s_rpiMappingRockchip->e.rpi_mask & inputs) > 0)
         setGPIO(&(s_rpiMappingRockchip->e), clear_bit);
 
-    if ( (s_rpiMappingRockchip->p0_r1.rpi_mask & inputs) > 0)
+    if ( (s_rpiMappingRockchip->p0_r1.rpi_mask & inputs) > 0){
         setGPIO(&(s_rpiMappingRockchip->p0_r1), clear_bit);
+    }
 
     if ( (s_rpiMappingRockchip->p0_g1.rpi_mask & inputs) > 0)
         setGPIO(&(s_rpiMappingRockchip->p0_g1), clear_bit);
@@ -608,8 +695,9 @@ static bool setGPIOs(uint32_t inputs, bool clear_bit = false)
 
     if ( (s_rpiMappingRockchip->p0_b2.rpi_mask & inputs) > 0)
         setGPIO(&(s_rpiMappingRockchip->p0_b2), clear_bit);
-    
-    fprintf(stdout, " data  after set= 0x%lx\n", readGPIOs(inputs));
+ 
+    flashGPIOs();   
+    //fprintf(stdout, " data  after set= 0x%lx\n", readGPIOs(inputs));
 
     return true;
 }
@@ -753,13 +841,13 @@ static int ReadFileToBuffer(char *buffer, size_t size, const char *filename) {
 static RaspberryPiModel DetermineRaspberryModel() {
   char buffer[4096];
   if (ReadFileToBuffer(buffer, sizeof(buffer), "/proc/cpuinfo") < 0) {
-    fprintf(stderr, "Reading cpuinfo: Could not determine Pi model\n");
+    fprintf(stderr, "Reading cpuinfo: Could not determine Pi model, Return PI_MODEL_3\n");
     return PI_MODEL_3;  // safe guess fallback.
   }
   static const char RevisionTag[] = "Revision";
   const char *revision_key;
   if ((revision_key = strstr(buffer, RevisionTag)) == NULL) {
-    fprintf(stderr, "non-existent Revision: Could not determine Pi model\n");
+    fprintf(stderr, "non-existent Revision: Could not determine Pi model, Return PI_MODEL_3\n");
     return PI_MODEL_3;
   }
   unsigned int pi_revision = 0;
@@ -795,6 +883,8 @@ static RaspberryPiModel DetermineRaspberryModel() {
 
 static RaspberryPiModel GetPiModel() {
   static RaspberryPiModel pi_model = DetermineRaspberryModel();
+  pi_model = PI_MODEL_1;
+  fprintf(stdout, "GetPiModel= %d\n", pi_model);
   return pi_model;
 }
 
@@ -929,6 +1019,7 @@ bool Timers::Init() {
   if (!init_rpi_mapping_rk3288_once())
     return false;
 
+  fprintf(stdout, "Timers::Init");
   // Choose the busy-wait loop that fits our Pi.
   switch (GetPiModel()) {
   case PI_MODEL_1: busy_wait_impl = busy_wait_nanos_rpi_1; break;
@@ -1028,6 +1119,7 @@ static void busy_wait_nanos_rpi_4(long nanos) {
   for (uint32_t i = (nanos - 5) * 100 / 132; i != 0; --i) {
     asm("");
   }
+
 }
 
 #if DEBUG_SLEEP_JITTER

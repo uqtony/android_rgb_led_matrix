@@ -1,0 +1,26 @@
+~/bin/adb root;
+~/bin/adb remount;
+~/bin/adb shell "echo 160 > /sys/class/gpio/export"
+~/bin/adb shell "echo 161 > /sys/class/gpio/export"
+~/bin/adb shell "echo 216 > /sys/class/gpio/export"
+~/bin/adb shell "echo 218 > /sys/class/gpio/export"
+~/bin/adb shell "echo 221 > /sys/class/gpio/export"
+~/bin/adb shell "echo 222 > /sys/class/gpio/export"
+~/bin/adb shell "echo 233 > /sys/class/gpio/export"
+~/bin/adb shell "echo 234 > /sys/class/gpio/export"
+~/bin/adb shell "echo 252 > /sys/class/gpio/export"
+~/bin/adb shell "echo 253 > /sys/class/gpio/export"
+~/bin/adb shell "echo 254 > /sys/class/gpio/export"
+
+~/bin/adb shell "echo out > /sys/class/gpio/gpio160/direction"
+~/bin/adb shell "echo out > /sys/class/gpio/gpio161/direction"
+~/bin/adb shell "echo out > /sys/class/gpio/gpio216/direction"
+~/bin/adb shell "echo out > /sys/class/gpio/gpio218/direction"
+~/bin/adb shell "echo out > /sys/class/gpio/gpio221/direction"
+~/bin/adb shell "echo out > /sys/class/gpio/gpio222/direction"
+~/bin/adb shell "echo out > /sys/class/gpio/gpio233/direction"
+~/bin/adb shell "echo out > /sys/class/gpio/gpio234/direction"
+~/bin/adb shell "echo out > /sys/class/gpio/gpio252/direction"
+~/bin/adb shell "echo out > /sys/class/gpio/gpio253/direction"
+~/bin/adb shell "echo out > /sys/class/gpio/gpio254/direction"
+

@@ -273,7 +273,7 @@ static struct RPIMappingRockchip s_rpiRegularMappingRK3288 = {
     {
         .name = "p0_g2",
         .rpi_mask = GPIO_BIT(9),
-        .rockchip_mask = GPIO_BIT(10),
+        .rockchip_mask = GPIO_BIT(2),
         .rockchipGpio = &s_rk3288_gpios[7],
     },
     .p0_b2 =            
@@ -462,6 +462,12 @@ static bool setGPIO(struct RPIMappingRockchip_GPIO* gpio, bool clear_bit = false
     !clear_bit?
     *(gpio-> rockchipGpio->data_write_reg) |= data:
     *(gpio-> rockchipGpio->data_write_reg) &= ~data;
+    uint32_t result = 0;
+    result = *(gpio-> rockchipGpio->data_read_reg);
+    bool cmp_result = !clear_bit? result & data: ~result & data;
+    if (!cmp_result) {
+        fprintf(stderr, "setGPIO failed, data=0x%lx, result=0x%lx, clear_bit=%s\n", data, result,clear_bit?"true":"false");
+    }
     return true;
 }
 
@@ -758,7 +764,6 @@ static struct RPIMappingRockchip_GPIO* select_gpio_by_name(char *arg)
 
 static int read_gpio(char *arg)
 {
-    fprintf(stdout, "read gpio, optind=%d, arg=%s\n", optind, arg);
     struct RPIMappingRockchip_GPIO* gpio = select_gpio_by_name(arg);
     if (gpio == NULL) {
         fprintf(stderr, "Cannot find gpio by name[%s]\n", arg);
@@ -772,13 +777,13 @@ static int read_gpio(char *arg)
 
 static int write_gpio(char *arg)
 {
-    fprintf(stdout, "write gpio, optind=%d, arg=%s\n", optind, arg);
     struct RPIMappingRockchip_GPIO* gpio = select_gpio_by_name(arg);
     if (gpio == NULL) {
         fprintf(stderr, "Cannot find gpio by name[%s]\n", arg);
         return -1;
     }
     fprintf(stdout, "write gpio, name[%s]\n", arg);
+    setGPIOsMode(gpio->rpi_mask);
     setGPIOs(gpio->rpi_mask);
     uint32_t data =readGPIOs(gpio->rpi_mask);
 
@@ -787,11 +792,27 @@ static int write_gpio(char *arg)
     return 0;
 }
 
+static int clear_gpio(char *arg)
+{
+    struct RPIMappingRockchip_GPIO* gpio = select_gpio_by_name(arg);
+    if (gpio == NULL) { 
+        fprintf(stderr, "Cannot find gpio by name[%s]\n", arg);
+        return -1;
+    }
+    fprintf(stdout, "clear gpio, name[%s]\n", arg);
+    setGPIOsMode(gpio->rpi_mask);
+    setGPIOs(gpio->rpi_mask, true);
+    uint32_t data =readGPIOs(gpio->rpi_mask);
+
+    fprintf(stdout, "Read gpio: name[%s], data=0x%lx, status:%s\n", arg, data, (data!=0)?"High":"Low");
+
+    return 0;
+}
+
+
 static int exec_program(int argc, char *argv[])
 { 
-    fprintf(stdout, "execute program, argc=%d, optind=%d\n", argc, optind);
     char* arg = argv[optind];
-    fprintf(stdout, "execute demo, program=%s\n", argv[optind]);
     int programSize = sizeof(s_programMain)/ sizeof(s_programMain[0]);
     fprintf(stdout, "size of executable program=%d\n", programSize);
     for (int i = 0; i < programSize; i++)
@@ -804,12 +825,15 @@ static int exec_program(int argc, char *argv[])
     return 0;
 }
 
+static void fillScreenColor(uint32_t color, uint32_t width, uint32_t height);
+
 
 static int usage(int argc, char* argv[])
 {
-    fprintf(stdout, "Usage: %s -R[parameter] -W[parameter] -p [program_name]\n", argv[0]);
-    fprintf(stdout, "\t-R: read gpio by name\n");
-    fprintf(stdout, "\t-W: write gpio by name\n");
+    fprintf(stdout, "Usage: %s -Option[parameter] -p [program_name]\n", argv[0]);
+    fprintf(stdout, "\t-R: read gpio by name, ex: -Rclock: Read clock data\n");
+    fprintf(stdout, "\t-W: write gpio by name, ex: -Wclock: Write clock data as 1\n");
+    fprintf(stdout, "\t-C: write gpio by name, ex: -Cclock: Clear clock data to be 0\n");
     
     fprintf(stdout, "\t-p: execute program by name\n");
     int programSize = sizeof(s_programMain)/ sizeof(s_programMain[0]);
@@ -825,14 +849,21 @@ static int parseOpt(int argc, char *argv[])
 {
     int opt;
 
-    while((opt = getopt(argc, argv, "R:W:p")) != -1) {
+    while((opt = getopt(argc, argv, "T:R:W:C:p")) != -1) {
         switch(opt) {
+            case 'T':
+                fillScreenColor(atoi(optarg), 32, 16);
+                break;
             case 'R':
                 read_gpio(optarg);
 		break;
 	    case 'W':
                 write_gpio(optarg);
                 break;
+            case 'C':
+                clear_gpio(optarg);
+                break;
+
             case 'p':
                 return exec_program(argc, argv);
                 break;
@@ -841,6 +872,148 @@ static int parseOpt(int argc, char *argv[])
         }
     }
     return 0;
+}
+
+static void prepareGPIOs() {
+    uint32_t inputs = 0;
+    inputs |= 
+              s_rpiMappingRockchip->output_enable.rpi_mask|//252
+              s_rpiMappingRockchip->clock.rpi_mask|//254
+              s_rpiMappingRockchip->strobe.rpi_mask|//253
+              s_rpiMappingRockchip->p0_g2.rpi_mask|//218  // direction not work
+              s_rpiMappingRockchip->p0_b2.rpi_mask|//216   // not work, pull down by someone?
+              s_rpiMappingRockchip->p0_r2.rpi_mask|//233 // sometimes not work!?   
+              s_rpiMappingRockchip->p0_r1.rpi_mask| // 222 
+              s_rpiMappingRockchip->p0_g1.rpi_mask|//221   
+              s_rpiMappingRockchip->p0_b1.rpi_mask|//234   // sometimes not work!?
+              s_rpiMappingRockchip->a.rpi_mask |//160  
+              s_rpiMappingRockchip->b.rpi_mask//161   
+              ;
+    setGPIOsMode(inputs); // set GPIOs Mode: output
+}
+/*
+static void tick() {//clock function for data entry
+
+    //sets clock high low very fast
+    setGPIO(&(s_rpiMappingRockchip->clock));
+    setGPIO(&(s_rpiMappingRockchip->clock), CLEAR_DATA);
+}
+*/
+static void tick() {//clock function for data entry
+
+    //sets clock high low very fast
+    setGPIOs(s_rpiMappingRockchip->clock.rpi_mask);
+    setGPIOs(s_rpiMappingRockchip->clock.rpi_mask, CLEAR_DATA);
+}
+
+
+/*
+static void selectLine(uint32_t row)
+{
+   setGPIOs(s_rpiMappingRockchip->a.rpi_mask |  //160  
+            s_rpiMappingRockchip->b.rpi_mask |   //161
+            s_rpiMappingRockchip->c.rpi_mask   //161
+            , CLEAR_DATA);
+    if (row & 0x1) {
+        setGPIO(&(s_rpiMappingRockchip->a));
+    }
+    if (row & 0x2) {
+        setGPIO(&(s_rpiMappingRockchip->b));
+    }
+    if (row & 0x4) {
+        setGPIO(&(s_rpiMappingRockchip->c));
+    }
+           
+}*/
+
+static void selectLine(uint32_t row)
+{
+   setGPIOs(s_rpiMappingRockchip->a.rpi_mask |  //160  
+            s_rpiMappingRockchip->b.rpi_mask |   //161
+            s_rpiMappingRockchip->c.rpi_mask   //161
+            , CLEAR_DATA);
+    if (row & 0x1) {
+        setGPIOs(s_rpiMappingRockchip->a.rpi_mask);
+    }
+    if (row & 0x2) {
+        setGPIOs(s_rpiMappingRockchip->b.rpi_mask);
+    }
+    if (row & 0x4) {
+        setGPIOs(s_rpiMappingRockchip->c.rpi_mask);
+    }
+ 
+}
+
+
+/*
+static void latch() {//this function cleans up and latches the data, so diplays it
+    //latch output
+    setGPIO(&(s_rpiMappingRockchip->strobe));
+    setGPIO(&(s_rpiMappingRockchip->strobe), CLEAR_DATA);
+
+    setGPIO(&(s_rpiMappingRockchip->output_enable));
+
+    setGPIO(&(s_rpiMappingRockchip->a), CLEAR_DATA);
+    setGPIO(&(s_rpiMappingRockchip->b), CLEAR_DATA);
+    setGPIO(&(s_rpiMappingRockchip->c), CLEAR_DATA);
+    setGPIO(&(s_rpiMappingRockchip->d), CLEAR_DATA);
+
+    setGPIO(&(s_rpiMappingRockchip->output_enable), CLEAR_DATA);
+}
+*/
+static void latch() {//this function cleans up and latches the data, so diplays it
+    //latch output
+    setGPIOs(s_rpiMappingRockchip->strobe.rpi_mask);
+    setGPIOs(s_rpiMappingRockchip->strobe.rpi_mask, CLEAR_DATA);
+
+    setGPIOs(s_rpiMappingRockchip->output_enable.rpi_mask);
+
+    setGPIOs(s_rpiMappingRockchip->a.rpi_mask, CLEAR_DATA);
+    setGPIOs(s_rpiMappingRockchip->b.rpi_mask, CLEAR_DATA);
+    setGPIOs(s_rpiMappingRockchip->c.rpi_mask, CLEAR_DATA);
+    setGPIOs(s_rpiMappingRockchip->d.rpi_mask, CLEAR_DATA);
+
+    setGPIOs(s_rpiMappingRockchip->output_enable.rpi_mask, CLEAR_DATA);
+}
+
+/*
+static void setColor(uint32_t color)
+{
+    // For test, set color to be RED only
+    setGPIO(&(s_rpiMappingRockchip->p0_r1));
+    setGPIO(&(s_rpiMappingRockchip->p0_g1), CLEAR_DATA);
+    setGPIO(&(s_rpiMappingRockchip->p0_b1), CLEAR_DATA);
+    setGPIO(&(s_rpiMappingRockchip->p0_r2));
+    setGPIO(&(s_rpiMappingRockchip->p0_g2), CLEAR_DATA);
+    setGPIO(&(s_rpiMappingRockchip->p0_b2), CLEAR_DATA);
+
+}*/
+
+static void setColor(uint32_t color)
+{
+    // For test, set color to be RED only
+    setGPIOs(s_rpiMappingRockchip->p0_r1.rpi_mask);
+    setGPIOs(s_rpiMappingRockchip->p0_g1.rpi_mask, CLEAR_DATA);
+    setGPIOs(s_rpiMappingRockchip->p0_b1.rpi_mask, CLEAR_DATA);
+    setGPIOs(s_rpiMappingRockchip->p0_r2.rpi_mask);
+    setGPIOs(s_rpiMappingRockchip->p0_g2.rpi_mask, CLEAR_DATA);
+    setGPIOs(s_rpiMappingRockchip->p0_b2.rpi_mask, CLEAR_DATA);
+
+}
+
+static void fillScreenColor(uint32_t color, uint32_t width, uint32_t height){
+    prepareGPIOs();
+    while(1) {
+        for(uint32_t col = 0; col < width; col++){
+            for(uint32_t row = 0; row < (height/2); row++) {
+                selectLine(row);
+                setColor(color);   
+                tick();
+                if ( ((row+1)%8) == 0)
+                    latch();
+            }
+        }
+    }
 }
 
 int main(int argc, char *argv[]) {
