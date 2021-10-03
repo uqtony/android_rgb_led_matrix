@@ -36,6 +36,7 @@ LOCAL_SRC_FILES:=\
     examples-api-use/text-example.cc\
     examples-api-use/minimal-example.cc\
     examples-api-use/demo-main.cc\
+    utils/led-image-viewer.cc\
     test.cc
 
 LOCAL_MODULE_TAGS := optional
