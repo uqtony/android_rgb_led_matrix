@@ -23,4 +23,5 @@
 ~/bin/adb shell "echo out > /sys/class/gpio/gpio252/direction"
 ~/bin/adb shell "echo out > /sys/class/gpio/gpio253/direction"
 ~/bin/adb shell "echo out > /sys/class/gpio/gpio254/direction"
+~/bin/adb shell "echo 148500000 > /sys/kernel/debug/clk/pclk_gpio7/clk_rate"
 
