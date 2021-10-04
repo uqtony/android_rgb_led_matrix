@@ -579,7 +579,7 @@ static bool setGPIOsMode(uint32_t inputs, bool outputMode = true)
     return true;
 }
 
-static void flashGPIOs()
+static inline void flashGPIOs()
 {
     for(int i = 5; i <=8; i++) {
         if (s_rk3288_gpios[i].change){
@@ -593,7 +593,20 @@ static void flashGPIOs()
     }
 }
 
-static bool setGPIO(struct RPIMappingRockchip_GPIO* gpio, bool clear_bit = false)
+
+static bool setGPIODirect(struct RPIMappingRockchip_GPIO* gpio, bool clear_bit = false)
+{
+    if (gpio == NULL || gpio-> rockchipGpio == NULL)
+        return false;
+    uint32_t data = gpio->rockchip_mask;
+
+    !clear_bit?
+    *(gpio-> rockchipGpio->data_write_reg) |= data:
+    *(gpio-> rockchipGpio->data_write_reg) &= ~data;
+    return true;
+}
+
+static inline bool setGPIO(struct RPIMappingRockchip_GPIO* gpio, bool clear_bit = false)
 {
     if (gpio == NULL || gpio-> rockchipGpio == NULL)
         return false;
@@ -624,7 +637,7 @@ static bool setGPIO(struct RPIMappingRockchip_GPIO* gpio, bool clear_bit = false
     return true;
 }
 
-static uint32_t readGPIO(struct RPIMappingRockchip_GPIO* gpio)
+static inline uint32_t readGPIO(struct RPIMappingRockchip_GPIO* gpio)
 {
     if (gpio == NULL || gpio-> rockchipGpio == NULL)
         return false;
@@ -650,6 +663,78 @@ static bool setGPIOs(uint32_t inputs, bool clear_bit = false)
     if(!enableGPIOClock())
         return false;
 
+    //fprintf(stdout, " setGPIOs, inputs= 0x%lx, clear data=%d\n", inputs, clear_bit);
+    /*switch(inputs){
+        case GPIO_BIT(18):
+            setGPIODirect(&(s_rpiMappingRockchip->output_enable), clear_bit);
+            return true;
+	    break;
+        case GPIO_BIT(17):
+            setGPIODirect(&(s_rpiMappingRockchip->clock), clear_bit);
+            return true;
+            break;
+        case GPIO_BIT(4):
+            setGPIODirect(&(s_rpiMappingRockchip->strobe), clear_bit);
+            return true;
+            break;
+        case GPIO_BIT(22):
+            setGPIODirect(&(s_rpiMappingRockchip->a), clear_bit);
+            return true;
+            break;
+        case GPIO_BIT(23):
+            setGPIODirect(&(s_rpiMappingRockchip->b), clear_bit);
+            return true;
+            break;
+        case GPIO_BIT(24):
+            setGPIODirect(&(s_rpiMappingRockchip->c), clear_bit);
+            return true;
+            break;
+        case GPIO_BIT(25):
+            setGPIODirect(&(s_rpiMappingRockchip->d), clear_bit);
+            return true;
+            break;
+        case GPIO_BIT(15):
+            setGPIODirect(&(s_rpiMappingRockchip->e), clear_bit);
+            return true;
+            break;
+        case GPIO_BIT(11):
+            setGPIODirect(&(s_rpiMappingRockchip->p0_r1), clear_bit);
+            return true;
+            break;
+        case GPIO_BIT(27):
+            setGPIODirect(&(s_rpiMappingRockchip->p0_g1), clear_bit);
+            return true;
+            break;
+        case GPIO_BIT(7):
+            setGPIODirect(&(s_rpiMappingRockchip->p0_b1), clear_bit);
+            return true;
+            break;
+        case GPIO_BIT(8):
+            setGPIODirect(&(s_rpiMappingRockchip->p0_r2), clear_bit);
+            return true;
+            break;
+        case GPIO_BIT(9):
+            setGPIODirect(&(s_rpiMappingRockchip->p0_g2), clear_bit);
+            return true;
+            break;
+        case GPIO_BIT(10):
+            setGPIODirect(&(s_rpiMappingRockchip->p0_b2), clear_bit);
+            return true;
+            break;
+       case 0x8020f80:
+            setGPIO(&(s_rpiMappingRockchip->clock), clear_bit);
+            setGPIO(&(s_rpiMappingRockchip->p0_r1), clear_bit);
+            setGPIO(&(s_rpiMappingRockchip->p0_g1), clear_bit);
+            setGPIO(&(s_rpiMappingRockchip->p0_b1), clear_bit);
+            setGPIO(&(s_rpiMappingRockchip->p0_r2), clear_bit);
+            setGPIO(&(s_rpiMappingRockchip->p0_g2), clear_bit);
+            setGPIO(&(s_rpiMappingRockchip->p0_b2), clear_bit);
+            flashGPIOs();
+	    return true;
+	    break;
+
+    }//end switch
+*/
     //fprintf(stdout, " setGPIOs, inputs= 0x%lx, clear data=%d\n", inputs, clear_bit);
     // Only care about GPIO mapping to rockchip
     if ( (s_rpiMappingRockchip->output_enable.rpi_mask & inputs) > 0)
@@ -711,6 +796,7 @@ static uint32_t readGPIOs(uint32_t inputs)
     if (!enableGPIOClock())
         return 0;
 
+    //fprintf(stdout, " readGPIOs, inputs= 0x%lx\n", inputs);
     // Only care about GPIO mapping to rockchip
     if ( (s_rpiMappingRockchip->output_enable.rpi_mask & inputs) > 0)
         if (readGPIO(&(s_rpiMappingRockchip->output_enable)) > 0)

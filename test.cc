@@ -698,7 +698,12 @@ struct ProgramMain s_programMain[] = {
     {
         .name = "demo",
         .main_function = &demo_main
+    },
+    {
+        .name = "image_viewer",
+        .main_function = &led_image_viewer_main
     }
+
 
 };
 
