@@ -13,6 +13,7 @@ int pixel_mover_main(int argc, char *argv[]);
 int text_example_main(int argc, char *argv[]);
 int minimal_example_main(int argc, char *argv[]);
 int demo_main(int argc, char *argv[]);
+int led_image_viewer_main(int argc, char *argv[]);
 
 #ifdef  __cplusplus
 }  // extern C

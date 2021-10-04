@@ -39,8 +39,13 @@
 #include <string>
 #include <vector>
 
-#include <Magick++.h>
-#include <magick/image.h>
+//#include <Magick++.h>
+//#include <magick/image.h>
+#include "opencv2/opencv.hpp"
+#include "opencv2/imgcodecs/imgcodecs_c.h"
+
+#include "exec_program.h"
+
 
 using rgb_matrix::Canvas;
 using rgb_matrix::FrameCanvas;
@@ -85,21 +90,23 @@ static void SleepMillis(tmillis_t milli_seconds) {
   nanosleep(&ts, NULL);
 }
 
-static void StoreInStream(const Magick::Image &img, int delay_time_us,
+static void StoreInStream(const cv::Mat &img, int delay_time_us,
                           bool do_center,
                           rgb_matrix::FrameCanvas *scratch,
                           rgb_matrix::StreamWriter *output) {
   scratch->Clear();
-  const int x_offset = do_center ? (scratch->width() - img.columns()) / 2 : 0;
-  const int y_offset = do_center ? (scratch->height() - img.rows()) / 2 : 0;
-  for (size_t y = 0; y < img.rows(); ++y) {
-    for (size_t x = 0; x < img.columns(); ++x) {
-      const Magick::Color &c = img.pixelColor(x, y);
-      if (c.alphaQuantum() < 256) {
+  const int x_offset = do_center ? (scratch->width() - img.cols) / 2 : 0;
+  const int y_offset = do_center ? (scratch->height() - img.rows) / 2 : 0;
+  for (size_t y = 0; y < img.rows; ++y) {
+    for (size_t x = 0; x < img.cols; ++x) {
+      char b = img.at<cv::Vec3b>(y,x)[0];
+      char g = img.at<cv::Vec3b>(y,x)[1];
+      char r = img.at<cv::Vec3b>(y,x)[2];
+      {
         scratch->SetPixel(x + x_offset, y + y_offset,
-                          ScaleQuantumToChar(c.redQuantum()),
-                          ScaleQuantumToChar(c.greenQuantum()),
-                          ScaleQuantumToChar(c.blueQuantum()));
+                          r,
+                          g,
+                          b);
       }
     }
   }
@@ -115,16 +122,49 @@ static void CopyStream(rgb_matrix::StreamReader *r,
   }
 }
 
+static int readGIFImagesByCV(std::vector<cv::Mat> *frames, const char *filename) {
+    cv::VideoCapture capture;
+    cv::Mat frame;
+    frame= capture.open(filename); //讀取gif檔案
+
+    if(!capture.isOpened())
+    {
+        printf("can not open ...\n");
+        return -1;
+    }
+    while (capture.read(frame))
+    {
+        std::cout << frame.size() << std::endl;   //列印每一幀的尺寸
+        frames->push_back(frame);
+    }
+    capture.release();
+    return 0;
+}
+
+
+static int readImagesByCV(std::vector<cv::Mat> *frames, const char *filename) {
+    cv::Mat frame = cv::imread(filename, CV_LOAD_IMAGE_COLOR);;
+
+    std::cout << frame.size() << std::endl;   //列印每一幀的尺寸
+    frames->push_back(frame);
+
+    return 0;
+}
+
 // Load still image or animation.
 // Scale, so that it fits in "width" and "height" and store in "result".
 static bool LoadImageAndScale(const char *filename,
                               int target_width, int target_height,
                               bool fill_width, bool fill_height,
-                              std::vector<Magick::Image> *result,
+                              std::vector<cv::Mat> *result,
                               std::string *err_msg) {
-  std::vector<Magick::Image> frames;
+  std::vector<cv::Mat> frames;
   try {
-    readImages(&frames, filename);
+    int ret = readImagesByCV(&frames, filename);
+    if (ret != 0){
+        std::cout<<"Load image failed!! "<<filename<<std::endl;
+        return false;
+    }
   } catch (std::exception& e) {
     if (e.what()) *err_msg = e.what();
     return false;
@@ -137,13 +177,13 @@ static bool LoadImageAndScale(const char *filename,
   // Put together the animation from single frames. GIFs can have nasty
   // disposal modes, but they are handled nicely by coalesceImages()
   if (frames.size() > 1) {
-    Magick::coalesceImages(result, frames.begin(), frames.end());
+    result->assign(frames.begin(), frames.end());
   } else {
     result->push_back(frames[0]);   // just a single still image.
   }
 
-  const int img_width = (*result)[0].columns();
-  const int img_height = (*result)[0].rows();
+  const int img_width = (*result)[0].cols;
+  const int img_height = (*result)[0].rows;
   const float width_fraction = (float)target_width / img_width;
   const float height_fraction = (float)target_height / img_height;
   if (fill_width && fill_height) {
@@ -167,7 +207,16 @@ static bool LoadImageAndScale(const char *filename,
   }
 
   for (size_t i = 0; i < result->size(); ++i) {
-    (*result)[i].scale(Magick::Geometry(target_width, target_height));
+    std::cout<<"resize image to "<<target_width<<","<<target_height<<std::endl;
+    cv::resize((*result)[i], (*result)[i], cv::Size(target_width,target_height), cv::INTER_AREA);
+    std::cout<<"image size after resize, "<<(*result)[i].cols<<", "<<(*result)[i].rows<<std::endl;
+    /*
+    std::vector<int> compression_params;
+    compression_params.push_back(cv::IMWRITE_JPEG_QUALITY);
+    compression_params.push_back(100);
+    cv::Mat dst;
+    cv::imwrite("/sdcard/out.jpg",(*result)[i],compression_params);
+    */
   }
 
   return true;
@@ -247,7 +296,6 @@ static int usage(const char *progname) {
 }
 
 int led_image_viewer_main(int argc, char *argv[]) {
-  Magick::InitializeMagick(*argv);
 
   RGBMatrix::Options matrix_options;
   rgb_matrix::RuntimeOptions runtime_opt;
@@ -386,7 +434,7 @@ int led_image_viewer_main(int argc, char *argv[]) {
     FileInfo *file_info = NULL;
 
     std::string err_msg;
-    std::vector<Magick::Image> image_sequence;
+    std::vector<cv::Mat> image_sequence;
     if (LoadImageAndScale(filename, matrix->width(), matrix->height(),
                           fill_width, fill_height, &image_sequence, &err_msg)) {
       file_info = new FileInfo();
@@ -395,10 +443,10 @@ int led_image_viewer_main(int argc, char *argv[]) {
       file_info->is_multi_frame = image_sequence.size() > 1;
       rgb_matrix::StreamWriter out(file_info->content_stream);
       for (size_t i = 0; i < image_sequence.size(); ++i) {
-        const Magick::Image &img = image_sequence[i];
+        const cv::Mat &img = image_sequence[i];
         int64_t delay_time_us;
         if (file_info->is_multi_frame) {
-          delay_time_us = img.animationDelay() * 10000; // unit in 1/100s
+          delay_time_us = /*img.animationDelay()*/10 * 10000; // unit in 1/100s
         } else {
           delay_time_us = file_info->params.wait_ms * 1000;  // single image.
         }
